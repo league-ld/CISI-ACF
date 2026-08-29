@@ -37,7 +37,7 @@ ReportTime -- Time which the client has to report back to the server before the 
 
 LeaveWindow -- The amount of time the player has to leave after determining they are an exploiter. Here to prevent disconnection edge cases.
 
-SidePingCountReq -- The amount of RemoteEvents' signals needed to be received to determine the player still has connection to the game. NOTE: This count individual RemoteEvents. One RemoteEvent firing multiple times will be registered once.
+SidePingCountReq -- The amount of RemoteEvents' signals needed to be received to determine the player still has connection to the game. NOTE: This counts individual RemoteEvents. One RemoteEvent firing multiple times will be registered once.
 
 NoiseAttribs -- Random attributes attached to the inspector upon dispatch. Not very important, but could be integrated into the DAC.
 	
@@ -56,7 +56,7 @@ EventsFolders -- The default folders from which CISI will take RemoteEvents to d
 
 # Making a DAC configuration
 
-The easiest way to make your DAC configuration is by using the CISI Plugin. The Plugin allows for easily configurable checks, obfuscation, and automatic code generation that ensures client calculations match server ones.
+The easiest way to make your DAC configuration is by using the CISI Plugin. The Plugin allows for easily configurable checks, obfuscation, hashing pipeline, and automatic code generation that ensures client calculations match server ones.
 
 If you are not using the Plugin, then you need to properly set up all the files. First, you need a class name. Create a LocalScript and name it the class name, followed by its index(e.g. Snapshot1, Snapshot2...).
 Make sure that your indices start at 1 and do not skip a number(do _not_ do Snapshot1, Snapshot3). Put all of your LocalScripts inside Inspectors folder under CISIAPI. Make sure that the Anti-Cheat code inside your scripts
