@@ -101,3 +101,7 @@ Output is a function which should run the same calculations as the corresponding
 DependantValues holds the list of all values which can change. If those values change then there will be a recalculation of the correct code, and the new code will be added, among others, as one of the correct ones.
 This is to prevent false positives due to network latency. If your DAC checks for, for example, humanoid.WalkSpeed, and walk speed may change, then put ["character/Humanoid"] = "WalkSpeed" inside DependantValues. 
 It is also important that the first part of the path is one of these: player, character, plrCharacter, game, workspace. Other first entries are not currently supported.
+
+***
+
+For any bugs, suggestions, or questions, contact league_ld on Discord.
