@@ -58,6 +58,8 @@ EventsFolders -- The default folders from which CISI will take RemoteEvents to d
 
 The easiest way to make your DAC configuration is by using the CISI Plugin. The Plugin allows for easily configurable checks, obfuscation, hashing pipeline, and automatic code generation that ensures client calculations match server ones.
 
+You can get the plugin [here](https://create.roblox.com/store/asset/117304216701404/CISI-Plugin)
+
 If you are not using the Plugin, then you need to properly set up all the files. First, you need a class name. Create a LocalScript and name it the class name, followed by its index(e.g. Snapshot1, Snapshot2...).
 Make sure that your indices start at 1 and do not skip a number(do _not_ do Snapshot1, Snapshot3). Put all of your LocalScripts inside Inspectors folder under CISIAPI. Make sure that the Anti-Cheat code inside your scripts
 ends with 
