@@ -3,7 +3,7 @@
 
 After installing CISI into your Roblox game, open the "CISI Bootstrap" script, paste its contents into the command bar at the bottom of the screen and run it. This will install all the files in correct locations.
 
-**Make sure you have GUI objects inside PlayerGui or CISI may crash the game.**
+**Make sure you have GUI objects inside PlayerGui.**
 
 
 # Terminology
