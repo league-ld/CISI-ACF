@@ -20,6 +20,7 @@ const sidePings: {[Player]: {RBXScriptConnection}} = {}
 const changesConnects: {[Player]: {RBXScriptConnection}} = {}
 const sTelemetries: {[Player]: {[string]: {}}} = {}
 const validResponses: {[Player]: {string}} = {}
+const receivedTelemetries: {[Player]: boolean} = {}
 
 const eventsCache: {RemoteEvent} = {}
 
@@ -79,6 +80,10 @@ local function disconnectPingEvents(player: Player)
 	sidePings[player] = nil
 end
 
+local function clearValidHashes(player: Player)
+	table.clear(validResponses[player] or {})
+end
+
 API.CancelReport = function(player: Player)
 	if reportWaiters[player] then
 		if coroutine.running() ~= reportWaiters[player] then
@@ -87,7 +92,6 @@ API.CancelReport = function(player: Player)
 		reportWaiters[player] = nil
 	end
 	table.clear(sTelemetries[player] or {})
-	table.clear(validResponses[player] or {})
 	disconnectPingEvents(player)
 	disconnectChangeConnects(player)
 end
@@ -134,6 +138,8 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 		table.insert(sidePings[player], connection)
 	end
 	
+	receivedTelemetries[player] = nil
+	clearValidHashes(player)
 	validResponses[player] = validResponses[player] or {}
 	local validHashes = validResponses[player]
 	sTelemetries[player] = sTelemetries[player] or {}
@@ -274,6 +280,12 @@ end
 
 telemetryEvent.OnServerEvent:Connect(function(player, hash, telemetryData)
 	if not reportWaiters[player] then return end
+	if receivedTelemetries[player] then
+		-- Only ever send one telemetry back, so that the attacker cannot poison the telemetries.
+		API.OnTamperDetected(player)
+		return
+	end
+	receivedTelemetries[player] = true
 	LogTelemetry(player, hash, telemetryData, sTelemetries[player]) 
 	-- Up to developer implementation
 	-- Code must manually be added to record telemetry from inspections
@@ -286,6 +298,10 @@ end)
 
 game.Players.PlayerRemoving:Connect(function(player)
 	API.CancelReport(player)
+	validResponses[player] = nil
+	sTelemetries[player] = nil
+	changesConnects[player] = nil
+	receivedTelemetries[player] = nil
 end)
 
 return API
