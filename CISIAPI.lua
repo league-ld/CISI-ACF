@@ -8,14 +8,18 @@ local API = {}
 
 const Config = require(script.Config)
 const InspectorsConfig = require(script.InspectorsConfig)
+const LogTelemetry = require(script.LogTelemetry)
 const util2 = require(game.ReplicatedStorage.UtilFunc.UtilFuncSet2)
 
 const inspectors = script.Inspectors
 const telemetryEvent = game.ReplicatedStorage.Events.CISITelemetry
+const serverTelemetryEvent = game.ServerStorage.Events.CISIServerTelemetry
 
 const reportWaiters: {[Player]: thread} = {}
 const sidePings: {[Player]: {RBXScriptConnection}} = {}
 const changesConnects: {[Player]: {RBXScriptConnection}} = {}
+const sTelemetries: {[Player]: {[string]: {}}} = {}
+const validResponses: {[Player]: {string}} = {}
 
 const eventsCache: {RemoteEvent} = {}
 
@@ -82,6 +86,8 @@ API.CancelReport = function(player: Player)
 		end
 		reportWaiters[player] = nil
 	end
+	table.clear(sTelemetries[player] or {})
+	table.clear(validResponses[player] or {})
 	disconnectPingEvents(player)
 	disconnectChangeConnects(player)
 end
@@ -90,6 +96,11 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 	assert(player, "Pass a player when dispatching an inspector.")
 	assert(dispatch, "Pass an inspector script when dispatching an inspector.")
 	local candidateLocations = player.PlayerGui:GetDescendants()
+	if #candidateLocations == 0 then
+		warn("CISI needs PlayerGui to have at least one descendant to work. Canceling...")
+		return
+	end
+	
 	local dispatchLocation
 	while not dispatchLocation or dispatchLocation:IsA("LocalScript") or dispatchLocation:IsA("RemoteEvent") do
 		dispatchLocation = candidateLocations[math.random(#candidateLocations)]
@@ -123,13 +134,16 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 		table.insert(sidePings[player], connection)
 	end
 	
-	local validResponses = {}
+	validResponses[player] = validResponses[player] or {}
+	local validHashes = validResponses[player]
+	sTelemetries[player] = sTelemetries[player] or {}
 	changesConnects[player] = changesConnects[player] or {}
 	
 	local function addHash()
-		table.insert(validResponses, variantSettings.Output(player, dispatch))
+		table.insert(validHashes, variantSettings.Output(player, dispatch))
 	end
 	addHash()
+	
 	
 	local usingCharacterAdded = false
 	for path: string, property: string in pairs(variantSettings.DependantValues or {}) do
@@ -169,9 +183,9 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 		
 		API.CancelReport(player)
 
-		if not table.find(validResponses, code) then
+		if not table.find(validHashes, code) then
 			task.delay(Config.LeaveWindow, function()
-				if table.find(validResponses, code) then
+				if table.find(validHashes, code) then
 					-- Here to prevent any weird edge cases due to network latency.
 					return
 				end
@@ -234,7 +248,7 @@ API.Dispatch = function(player: Player)
 	
 	assert(#variantsPool > 0, "Failed to dispatch an inspector: Too few variants. Make sure you have enough variants, or decrease PlayerGroups or SessionGroups.")
 	
-	local variantID = math.random(#variantsPool)
+	local variantID = variantsPool[math.random(#variantsPool)]
 	local variantSettings = InspectorsConfig[currentClass].Variants[variantID]
 	local dispatch = inspectors:FindFirstChild(currentClass .. tostring(variantID))
 	assert(dispatch, `Mismatch between Inspectors folder and InspectorsConfig: {currentClass .. tostring(variantID)} not found.`)
@@ -257,6 +271,18 @@ end
 API.OnTamperDetected = function(player: Player)
 	-- Up to developer implementation
 end
+
+telemetryEvent.OnServerEvent:Connect(function(player, hash, telemetryData)
+	if not reportWaiters[player] then return end
+	LogTelemetry(player, hash, telemetryData, sTelemetries[player]) 
+	-- Up to developer implementation
+	-- Code must manually be added to record telemetry from inspections
+end)
+
+serverTelemetryEvent.Event:Connect(function(player, hash, telemetryData)
+	sTelemetries[player] = sTelemetries[player] or {}
+	sTelemetries[player][hash] = telemetryData
+end)
 
 game.Players.PlayerRemoving:Connect(function(player)
 	API.CancelReport(player)
