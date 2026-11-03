@@ -110,4 +110,8 @@ It is also important that the first part of the path is one of these: player, ch
 
 ***
 
+Configuration is the integrator's responsibility. Bugs due to typos or configuration mistakes, such as too short ReportTime, are integrator's mistakes.
+
+***
+
 For any bugs, suggestions, or questions, contact league_ld on Discord.
