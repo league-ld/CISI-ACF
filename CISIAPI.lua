@@ -111,12 +111,35 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 	end
 	
 	local otherPings = 0
+	local characterUpdateConnect: RBXScriptConnection?
 	API.CancelReport(player)
 	reportWaiters[player] = task.delay(Config.ReportTime, function() -- Handles missing reports from client
+		local waitingOnReconnect = 0
+		while otherPings <= Config.SidePingCountReq do
+			waitingOnReconnect += task.wait(0.1)
+			if waitingOnReconnect >= Config.MaxTimeWithoutConnection then
+				API.CancelReport(player)
+				player:Kick("You have been kicked due to network error. Please rejoin.")
+				return
+			end
+		end
 		API.CancelReport(player)
-		if otherPings <= Config.SidePingCountReq then return end
 		API.OnTamperDetected(player)
+		if characterUpdateConnect then
+			characterUpdateConnect:Disconnect()
+		end
 	end)
+	
+	-- A bit sketchy putting it here but it really doesn't matter
+	changesConnects[player] = changesConnects[player] or {}
+	table.insert(changesConnects[player], dispatchLocation.Destroying:Once(function()
+		-- Edge case that, if exists, is very rare.
+		if not reportWaiters[player] then return end
+		if characterUpdateConnect then
+			characterUpdateConnect:Disconnect()
+		end
+		API.CancelReport(player)
+	end))
 	
 	local variantSettings = getSettingsFromInstance(dispatch)
 	
@@ -143,7 +166,6 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 	validResponses[player] = validResponses[player] or {}
 	local validHashes = validResponses[player]
 	sTelemetries[player] = sTelemetries[player] or {}
-	changesConnects[player] = changesConnects[player] or {}
 	
 	local function addHash()
 		table.insert(validHashes, variantSettings.Output(player, dispatch))
@@ -152,25 +174,40 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 	
 	
 	local usingCharacterAdded = false
-	for path: string, property: string in pairs(variantSettings.DependantValues or {}) do
-		local parts = path:split("/")
-		local pointer
-		for i = 1, #parts do
-			if parts[i] == "" then continue end
-			if not pointer then
-				pointer = getInitialPointer(parts[i], player)
-			else
-				pointer = pointer:FindFirstChild(parts[i])
+	
+	local function reconnect()
+		if characterUpdateConnect then
+			characterUpdateConnect:Disconnect()
+			characterUpdateConnect = nil
+		end
+		for path: string, property: string in pairs(variantSettings.DependantValues or {}) do
+			local parts = path:split("/")
+			local pointer
+			for i = 1, #parts do
+				if parts[i] == "" then continue end
+				if not pointer then
+					pointer = getInitialPointer(parts[i], player)
+				else
+					pointer = pointer:FindFirstChild(parts[i])
+				end
 			end
+			
+			if not usingCharacterAdded and string.match(path, "character") then
+				table.insert(changesConnects[player], player.CharacterAdded:Connect(addHash))
+				usingCharacterAdded = true
+			end
+			
+			table.insert(changesConnects[player], pointer:GetPropertyChangedSignal(property):Connect(addHash))
 		end
 		
-		if not usingCharacterAdded and string.match(path, "character") then
-			table.insert(changesConnects[player], player.CharacterAdded:Connect(addHash))
-			usingCharacterAdded = true
+		if usingCharacterAdded then
+			characterUpdateConnect = player.CharacterAdded:Connect(function(character)
+				reconnect()
+				addHash()
+			end)
 		end
-		
-		table.insert(changesConnects[player], pointer:GetPropertyChangedSignal(property):Connect(addHash))
 	end
+	reconnect()
 	
 	local existingCode
 	dispatchEvent.OnServerEvent:Connect(function(_player, code)
@@ -179,6 +216,11 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 			API.OnTamperDetected(_player)
 			return
 		end
+		
+		if characterUpdateConnect then
+			characterUpdateConnect:Disconnect()
+		end
+		
 		if existingCode then
 			-- Inspectors should never send more than one code.
 			API.OnTamperDetected(player)
@@ -196,7 +238,7 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 				end
 			end)
 		else
-			--print("All good!")
+			print("All good!")
 		end
 	end)
 
@@ -232,6 +274,7 @@ API.Dispatch = function(player: Player)
 	end
 
 	for i = #variantsPool, 1, -1 do
+		if #variantsPool <= 1 then break end
 		if Config.EnablePlayerGrouping then
 			local mod = i % Config.PlayerGroups + 1
 			if mod ~= util2[1](Config.PlayerGroups, tostring(player.UserId)) then
@@ -239,6 +282,9 @@ API.Dispatch = function(player: Player)
 				continue
 			end
 		end
+	end
+	for i = #variantsPool, 1, -1 do
+		if #variantsPool <= 1 then break end
 		if Config.EnableSessionGrouping then
 			local mod = i % Config.SessionGroups + 1
 			if mod ~= util2[1](Config.SessionGroups, game.JobId) then
