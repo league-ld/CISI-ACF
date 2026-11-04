@@ -191,10 +191,6 @@ API.DispatchSpecific = function(player: Player, dispatch: LocalScript)
 
 		if not table.find(validHashes, code) then
 			task.delay(Config.LeaveWindow, function()
-				if table.find(validHashes, code) then
-					-- Here to prevent any weird edge cases due to network latency.
-					return
-				end
 				if player and player.Parent then
 					API.OnCheatingDetected(player)
 				end
