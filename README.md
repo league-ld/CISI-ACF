@@ -7,3 +7,5 @@ It contains many defense layers to ensure the integrity of the Anti-Cheat. The b
 This does not mean that one must choose one or the other; CISI is, in fact, meant to be used alongside server-sided Anti-Cheat for maximum protection.
 
 Read [this](https://github.com/league-ld/CISI-ACF/blob/main/How%20to%20use.md) to learn more about CISI.
+
+### [Video Showcase](https://youtu.be/F8sWFmIl0yA)
